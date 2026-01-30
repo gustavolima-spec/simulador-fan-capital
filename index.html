@@ -23,22 +23,22 @@ body {
     min-height: 100vh;
 }
 
-/* LOGO */
-.logo {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 20px;
+.logo-img {
+    text-align: center;
+    margin-bottom: 4px;
 }
 
-.logo img {
+.logo-img img {
     max-width: 220px;
+    width: 80%;
     height: auto;
 }
 
 h2 {
     text-align: center;
     font-weight: normal;
-    margin-bottom: 30px;
+    margin-top: 6px;
+    margin-bottom: 24px;
     color: #333;
 }
 
@@ -83,6 +83,7 @@ button.secondary {
     margin-top: 30px;
     padding-top: 20px;
     border-top: 1px solid #ddd;
+    font-size: 16px;
 }
 
 .valor {
@@ -119,9 +120,8 @@ button.secondary {
 
 <div class="container">
 
-    <!-- LOGO FAN CAPITAL -->
-    <div class="logo">
-        <img src="./logo-fan-capital.png" alt="FAN Capital">
+    <div class="logo-img">
+        <img src="https://fancapital.com.br/wp-content/uploads/2025/07/download_-3-1889x1080.png" alt="FAN Capital">
     </div>
 
     <h2>Simulador de Operações</h2>
@@ -132,8 +132,8 @@ button.secondary {
     <label>Taxa de juros (% ao mês)</label>
     <input id="taxa" placeholder="0,00" oninput="mascaraPercentual(this)">
 
-    <label>Prazo (dias)</label>
-    <input id="prazo" placeholder="0,0">
+    <label>Prazo médio (dias)</label>
+    <input id="prazo" placeholder="0,00" oninput="mascaraDecimal2(this)">
 
     <button onclick="simular()">Simular operação</button>
     <button class="secondary" onclick="gerarPDF()">Exportar PDF</button>
@@ -145,21 +145,32 @@ button.secondary {
         <span class="valor" id="liquido">R$ 0,00</span>
     </div>
 
-    <div class="breakdown" id="breakdown"></div>
+    <div class="breakdown" id="breakdown">
+        <strong>Breakdown do cálculo</strong><br><br>
+        Preencha os campos e clique em <b>Simular operação</b>.
+    </div>
 
 </div>
 
 <script>
 function mascaraMoeda(campo) {
     let v = campo.value.replace(/\D/g,'');
-    v = (v / 100).toFixed(2).replace('.', ',');
+    v = (v / 100).toFixed(2);
+    v = v.replace('.', ',');
     v = v.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     campo.value = 'R$ ' + v;
 }
 
 function mascaraPercentual(campo) {
     let v = campo.value.replace(/\D/g,'');
-    campo.value = (v / 100).toFixed(2).replace('.', ',');
+    v = (v / 100).toFixed(2).replace('.', ',');
+    campo.value = v;
+}
+
+function mascaraDecimal2(campo) {
+    let v = campo.value.replace(/\D/g,'');
+    v = (v / 100).toFixed(2).replace('.', ',');
+    campo.value = v;
 }
 
 function parseMoeda(v) {
@@ -171,10 +182,7 @@ function parseDecimal(v) {
 }
 
 function moeda(v) {
-    return v.toLocaleString('pt-BR', {
-        style: 'currency',
-        currency: 'BRL'
-    });
+    return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 let dados = {};
@@ -184,7 +192,13 @@ function simular() {
     const taxaMes = parseDecimal(taxa.value) / 100;
     const prazoDias = parseDecimal(prazo.value);
 
-    const receita = (taxaMes / 30) * prazoDias * bruto;
+    if (bruto <= 0 || taxaMes <= 0 || prazoDias <= 0) {
+        alert("Preencha todos os campos corretamente.");
+        return;
+    }
+
+    const taxaDia = taxaMes / 30;
+    const receita = taxaDia * prazoDias * bruto;
     const liquido = bruto - receita;
 
     document.getElementById("receita").innerText = moeda(receita);
@@ -192,10 +206,11 @@ function simular() {
 
     document.getElementById("breakdown").innerHTML = `
         <strong>Breakdown do cálculo</strong><br><br>
-        Valor bruto: ${moeda(bruto)}<br>
-        Taxa mensal: ${(taxaMes*100).toFixed(2)}%<br>
-        Prazo: ${prazoDias} dias<br>
-        Receita = (Taxa ÷ 30) × Prazo × Valor Bruto
+        Valor bruto da operação: ${moeda(bruto)}<br>
+        Taxa mensal: ${(taxaMes * 100).toFixed(2)}%<br>
+        Taxa diária: ${(taxaDia * 100).toFixed(4)}%<br>
+        Prazo médio: ${prazoDias.toFixed(2)} dias<br><br>
+        Receita operacional: <strong>${moeda(receita)}</strong>
     `;
 
     dados = { bruto, taxaMes, prazoDias, receita, liquido };
@@ -214,8 +229,8 @@ function gerarPDF() {
     pdf.text("Simulador de Operações", 20, 30);
 
     pdf.text(`Valor Bruto: ${moeda(dados.bruto)}`, 20, 50);
-    pdf.text(`Taxa Mensal: ${(dados.taxaMes*100).toFixed(2)}%`, 20, 60);
-    pdf.text(`Prazo: ${dados.prazoDias} dias`, 20, 70);
+    pdf.text(`Taxa Mensal: ${(dados.taxaMes * 100).toFixed(2)}%`, 20, 60);
+    pdf.text(`Prazo Médio: ${dados.prazoDias.toFixed(2)} dias`, 20, 70);
     pdf.text(`Receita Operacional: ${moeda(dados.receita)}`, 20, 90);
     pdf.text(`Valor Líquido: ${moeda(dados.liquido)}`, 20, 100);
 
@@ -225,5 +240,3 @@ function gerarPDF() {
 
 </body>
 </html>
-
-
