@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Simulador de Operações | FAN Capital</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f2f2f2;
+}
+
+.container {
+    background: #ffffff;
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 32px 24px;
+    min-height: 100vh;
+}
+
+/* LOGO */
+.logo {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.logo img {
+    max-width: 220px;
+    height: auto;
+}
+
+h2 {
+    text-align: center;
+    font-weight: normal;
+    margin-bottom: 30px;
+    color: #333;
+}
+
+label {
+    display: block;
+    margin-top: 18px;
+    font-size: 14px;
+    color: #555;
+}
+
+input,
+button {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+input {
+    padding: 14px;
+    margin-top: 6px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+
+button {
+    padding: 16px;
+    margin-top: 26px;
+    font-size: 17px;
+    border: none;
+    border-radius: 10px;
+    background: #e53935;
+    color: #fff;
+    cursor: pointer;
+}
+
+button.secondary {
+    background: #555;
+    margin-top: 14px;
+}
+
+.resultado {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+}
+
+.valor {
+    color: #e53935;
+    font-weight: bold;
+}
+
+.breakdown {
+    margin-top: 20px;
+    background: #fafafa;
+    padding: 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    color: #444;
+}
+
+@media (min-width: 768px) {
+    body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .container {
+        border-radius: 16px;
+        box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        min-height: auto;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- LOGO FAN CAPITAL -->
+    <div class="logo">
+        <img src="./logo-fan-capital.png" alt="FAN Capital">
+    </div>
+
+    <h2>Simulador de Operações</h2>
+
+    <label>Valor bruto da operação</label>
+    <input id="valorBruto" placeholder="R$ 0,00" oninput="mascaraMoeda(this)">
+
+    <label>Taxa de juros (% ao mês)</label>
+    <input id="taxa" placeholder="0,00" oninput="mascaraPercentual(this)">
+
+    <label>Prazo (dias)</label>
+    <input id="prazo" placeholder="0,0">
+
+    <button onclick="simular()">Simular operação</button>
+    <button class="secondary" onclick="gerarPDF()">Exportar PDF</button>
+
+    <div class="resultado">
+        Receita operacional:
+        <span class="valor" id="receita">R$ 0,00</span><br><br>
+        Valor líquido da operação:
+        <span class="valor" id="liquido">R$ 0,00</span>
+    </div>
+
+    <div class="breakdown" id="breakdown"></div>
+
+</div>
+
+<script>
+function mascaraMoeda(campo) {
+    let v = campo.value.replace(/\D/g,'');
+    v = (v / 100).toFixed(2).replace('.', ',');
+    v = v.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    campo.value = 'R$ ' + v;
+}
+
+function mascaraPercentual(campo) {
+    let v = campo.value.replace(/\D/g,'');
+    campo.value = (v / 100).toFixed(2).replace('.', ',');
+}
+
+function parseMoeda(v) {
+    return parseFloat(v.replace(/[R$\s.]/g,'').replace(',','.')) || 0;
+}
+
+function parseDecimal(v) {
+    return parseFloat(v.replace(',','.')) || 0;
+}
+
+function moeda(v) {
+    return v.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    });
+}
+
+let dados = {};
+
+function simular() {
+    const bruto = parseMoeda(valorBruto.value);
+    const taxaMes = parseDecimal(taxa.value) / 100;
+    const prazoDias = parseDecimal(prazo.value);
+
+    const receita = (taxaMes / 30) * prazoDias * bruto;
+    const liquido = bruto - receita;
+
+    document.getElementById("receita").innerText = moeda(receita);
+    document.getElementById("liquido").innerText = moeda(liquido);
+
+    document.getElementById("breakdown").innerHTML = `
+        <strong>Breakdown do cálculo</strong><br><br>
+        Valor bruto: ${moeda(bruto)}<br>
+        Taxa mensal: ${(taxaMes*100).toFixed(2)}%<br>
+        Prazo: ${prazoDias} dias<br>
+        Receita = (Taxa ÷ 30) × Prazo × Valor Bruto
+    `;
+
+    dados = { bruto, taxaMes, prazoDias, receita, liquido };
+}
+
+function gerarPDF() {
+    if (!dados.bruto) {
+        alert("Faça a simulação antes de exportar.");
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF();
+
+    pdf.text("FAN Capital", 20, 20);
+    pdf.text("Simulador de Operações", 20, 30);
+
+    pdf.text(`Valor Bruto: ${moeda(dados.bruto)}`, 20, 50);
+    pdf.text(`Taxa Mensal: ${(dados.taxaMes*100).toFixed(2)}%`, 20, 60);
+    pdf.text(`Prazo: ${dados.prazoDias} dias`, 20, 70);
+    pdf.text(`Receita Operacional: ${moeda(dados.receita)}`, 20, 90);
+    pdf.text(`Valor Líquido: ${moeda(dados.liquido)}`, 20, 100);
+
+    pdf.save("simulacao-operacao-fan-capital.pdf");
+}
+</script>
+
+</body>
+</html>
+
